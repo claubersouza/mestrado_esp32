@@ -11,6 +11,7 @@
 #include "esp_log.h"
 #include "include/consts.h"
 #include <inttypes.h>
+#include "esp_event_loop.h"
 #include "include/list_wifi.h"
 
 
@@ -24,12 +25,15 @@ char ssidScan[50];
 int rssiScan = 0;
 int channel = 0;
 
-
+#define DEFAULT_SCAN_LIST_SIZE 10
+static const char *TAG = "scan";
 void scan_wifi(wifi_scan_config_t scan_config);
-void next_channel(void);
 bool getMacAddress(uint8_t baseMac[6]);
 bool startsWith(const char *pre, const char *str);
+static void perform_scan(void);
+static void init_wifi(void);
 char baseMacChr[18] = {0};
+static bool got_scan_done_event= false;
 
 typedef struct  {
     char ssid [50];
@@ -38,6 +42,19 @@ typedef struct  {
     char mac[20];
     struct dl_list node;
 } WIFI;
+
+static esp_err_t event_handler(void *ctx, system_event_t *event)
+{
+    switch(event->event_id) {
+    case SYSTEM_EVENT_SCAN_DONE:
+        got_scan_done_event = true;
+        break;
+    default:
+        break;
+    }
+    return ESP_OK;
+}
+
 
 WIFI *init(char* ssid,int channel,int rssi,char* mac) {
     WIFI *wifi = malloc(sizeof(WIFI));
@@ -77,7 +94,7 @@ void insert(struct dl_list *list,char* ssid,int channel,int rssi, char* mac)
 	    dl_list_add_tail(list, &wifi_init->node);
 }
 
-
+/*
 void scan_wifi(wifi_scan_config_t scan_config) {
     printf("Começando Escanear Redes Wi-Fi Canal:%d\n",channel);
 
@@ -107,8 +124,8 @@ void scan_wifi(wifi_scan_config_t scan_config) {
     free(apCount);
     vTaskDelay(100);
 
-    next_channel();
 }
+*/
 
 bool startsWith(const char *pre, const char *str)
 {
@@ -121,6 +138,7 @@ bool startsWith(const char *pre, const char *str)
 bool getMacAddress(uint8_t baseMac[6])
 {   
     sprintf(baseMacChr, "%02X:%02X:%02X:%02X:%02X:%02X", baseMac[0], baseMac[1], baseMac[2], baseMac[3], baseMac[4], baseMac[5]);
+    printf("MAC %s\n",baseMacChr);
     if (startsWith(MAC_PREFIX_1,baseMacChr)) {
        return true;
     }
@@ -154,50 +172,55 @@ int getCH(const  char *ssid)
     return rssiScan;
 }
 
-void next_channel(void) {
+/* Initialise a wifi_ap_record_t, get it populated and display scanned data */
+static void perform_scan(void)
+{
+    uint16_t number = DEFAULT_SCAN_LIST_SIZE;
+    wifi_ap_record_t ap_info[DEFAULT_SCAN_LIST_SIZE];
+    uint16_t ap_count = 0;
+    memset(ap_info, 0, sizeof(ap_info));
+    ESP_ERROR_CHECK(esp_wifi_scan_get_ap_records(&number, ap_info));
+    ESP_ERROR_CHECK(esp_wifi_scan_get_ap_num(&ap_count));
+    ESP_LOGI(TAG, "Total APs scanned = %u", ap_count);
+    for (int i = 0; (i < DEFAULT_SCAN_LIST_SIZE) && (i < ap_count); i++) {
+        //ESP_LOGI(TAG, "SSID \t\t%s", ap_info[i].ssid);
+        //ESP_LOGI(TAG, "RSSI \t\t%d", ap_info[i].rssi);
+        //ESP_LOGI(TAG, "Channel \t\t%d\n", ap_info[i].primary);
 
-    wifi_init_config_t wifi_config = WIFI_INIT_CONFIG_DEFAULT();
-    esp_wifi_init(&wifi_config);
-    esp_wifi_set_mode(WIFI_MODE_STA);
-
-    esp_wifi_start();
-    
-    if (channel <= 11) {
-        channel++;
-            // configure and run the scan process in blocking mode
-	    wifi_scan_config_t scan_config = {
-            .ssid = 0,
-            .bssid = 0,
-            .channel = channel,
-            .show_hidden = true
-        };
-
-        scan_wifi(scan_config);
+        if (getMacAddress(ap_info[i].bssid)) {
+            insert(&head,(char *) ap_info[i].ssid, ap_info[i].primary, ap_info[i].rssi,baseMacChr);
+        }
     }
-    else
-    {
-        esp_wifi_stop();
-        vTaskDelay(1000);
-        channel = 0;
-        esp_wifi_start();
-        display(&head);
-    }
+
+    display(&head);
 }
 
 
+/* Initialize Wi-Fi as sta and start scan */
+static void init_wifi(void)
+{
+    tcpip_adapter_init();
+    ESP_ERROR_CHECK(esp_event_loop_init(event_handler, NULL));
+
+    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+    ESP_ERROR_CHECK(esp_wifi_start());
+
+    ESP_ERROR_CHECK(esp_wifi_scan_start(NULL, true));
+
+    while (1) {
+        if (got_scan_done_event == true) {
+            perform_scan();
+            got_scan_done_event = false;
+            break;
+        } else {
+            vTaskDelay(100 / portTICK_RATE_MS);
+        }
+    }
+}
+
 void setup_wifi(void) {
-    wifi_init_config_t wifi_config = WIFI_INIT_CONFIG_DEFAULT();
-    esp_wifi_init(&wifi_config);
-    esp_wifi_set_mode(WIFI_MODE_STA);
-    esp_wifi_start();
-
-    //global variable to scan_config
-    wifi_scan_config_t scan_config = {
-		.ssid = 0,
-		.bssid = 0,
-		.channel = 1,
-        .show_hidden = true
-    };
-
-    scan_wifi(scan_config);
+    init_wifi();
 }
