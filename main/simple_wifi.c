@@ -72,8 +72,8 @@ void init_task(void)
 
     //xTaskCreate(count_down_init,"count_down",1024,NULL,2,NULL);
     
-  //  xTaskCreate(udp_server_task, "udp_server", 4096, NULL, 1, NULL);
-    xTaskCreate(initLeach, "random", 2048, NULL, 5, NULL);  
+    xTaskCreate(udp_server_task, "udp_server", 4096, NULL, 1, NULL);
+   // xTaskCreate(initLeach, "random", 2048, NULL, 5, NULL);  
 
     //xTaskCreate(tcp_server_task,"tcp_server",4096,NULL,1,&Handle);
 
@@ -115,6 +115,7 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
         break;
     case SYSTEM_EVENT_STA_DISCONNECTED:
         ESP_LOGE(TAG, "Disconnect reason : %d", info->disconnected.reason);
+
         esp_wifi_connect();
         xEventGroupClearBits(wifi_event_group, WIFI_CONNECTED_BIT);
         break;
@@ -293,7 +294,9 @@ void app_main()
     setup_wifi();
     
 */
-    setup_wifi();
+wifi_init_sta();
+    init_task();
+  //  setup_wifi();
     //initLeach();
     //wifi_init_sta();
     //init_task();

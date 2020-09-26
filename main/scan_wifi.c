@@ -94,39 +94,6 @@ void insert(struct dl_list *list,char* ssid,int channel,int rssi, char* mac)
 	    dl_list_add_tail(list, &wifi_init->node);
 }
 
-/*
-void scan_wifi(wifi_scan_config_t scan_config) {
-    printf("Começando Escanear Redes Wi-Fi Canal:%d\n",channel);
-
-    esp_wifi_scan_start(&scan_config, true);
-    
-    uint16_t apCount = 0;
-
-    esp_wifi_scan_get_ap_num(&apCount);
-    
-    wifi_ap_record_t *list = (wifi_ap_record_t *)malloc(sizeof(wifi_ap_record_t) * apCount);
-
-    esp_wifi_scan_get_ap_records(&apCount,list);
-
-    printf("Total de lista: %d\n",apCount);
- 
-	for(int i = 0; i < apCount; i++){
-        printf("Valor SSID: %s -> Canal: %d -> Valor RSSI:%d\n",(char *) list[i].ssid,list[i].primary,list[i].rssi);
-        if (getMacAddress(list[i].bssid)) {
-            insert(&head,(char *) list[i].ssid,list[i].primary,list[i].rssi,baseMacChr);
-        }
-        printf("\n");
-
-        vTaskDelay(100);
-    }
-
-    free(list);
-    free(apCount);
-    vTaskDelay(100);
-
-}
-*/
-
 bool startsWith(const char *pre, const char *str)
 {
     size_t lenpre = strlen(pre),
@@ -138,7 +105,6 @@ bool startsWith(const char *pre, const char *str)
 bool getMacAddress(uint8_t baseMac[6])
 {   
     sprintf(baseMacChr, "%02X:%02X:%02X:%02X:%02X:%02X", baseMac[0], baseMac[1], baseMac[2], baseMac[3], baseMac[4], baseMac[5]);
-    printf("MAC %s\n",baseMacChr);
     if (startsWith(MAC_PREFIX_1,baseMacChr)) {
        return true;
     }
