@@ -6,7 +6,7 @@
 #include "esp_err.h"
 #include "esp_log.h"
 #include "esp_spiffs.h"
-#include "storage.h"
+#include "include/storage.h"
 #include <esp_wifi.h>
 
 
@@ -78,8 +78,8 @@ void closeFile()  {
 FILE* openFile(char* file, char* mode) {
 
     ESP_LOGI(TAG, OPEN_FILE_MSG);
-    char *path = strcat(prefix,file);
-    ESP_LOGI(TAG, path);
+    const char *path = strcat(prefix,file);
+    //ESP_LOGI(TAG,&path);
     FILE* f = fopen(path, mode);
     if (f == NULL) {
         ESP_LOGE(TAG, OPEN_FILE_MSG_ERROR);

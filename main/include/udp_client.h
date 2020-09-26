@@ -1,13 +1,12 @@
-
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 
+void udp_client_task(void *pvParameters);
+void initUdp(int rssi);
 
-void setup_wifi(void);
-int getCH(const  char *ssid);
+
 
     #ifdef __cplusplus
     }

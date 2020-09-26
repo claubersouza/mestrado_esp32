@@ -1,0 +1,62 @@
+menu "Example Configuration"
+
+choice ESP_WIFI_MODE
+    prompt "AP or STA"
+    default ESP_WIFI_IS_STATION
+    help
+        Whether the esp32 is softAP or station.
+
+config ESP_WIFI_IS_SOFTAP
+    bool "SoftAP"
+config ESP_WIFI_IS_STATION
+    bool "Station"
+endchoice
+
+config ESP_WIFI_MODE_AP
+    bool
+    default y if ESP_WIFI_IS_SOFTAP
+    default n if ESP_WIFI_IS_STATION
+
+config ESP_WIFI_SSID
+    string "WiFi SSID"
+    default "myssid"
+    help
+	SSID (network name) for the example to connect to.
+
+config ESP_WIFI_PASSWORD
+    string "WiFi Password"
+    default "mypassword"
+    help
+	WiFi password (WPA or WPA2) for the example to use.
+		
+config MAX_STA_CONN
+    int "Max STA conn"
+    default 4
+    help
+	Max number of the STA connects to AP.
+
+
+
+choice EXAMPLE_IP_MODE
+    prompt "IP Version"
+    help
+       Example can use either IPV4 or IPV6.
+
+config EXAMPLE_IPV4
+    bool "IPV4"
+
+config EXAMPLE_IPV6
+   bool "IPV6"
+   select EXAMPLE_CONNECT_IPV6
+
+endchoice
+
+config EXAMPLE_PORT
+    int "Port"
+    range 0 65535
+    default 3333
+    help
+        Local port the example server will listen on.
+
+
+endmenu

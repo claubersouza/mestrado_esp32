@@ -184,24 +184,6 @@ void next_channel(void) {
     }
 }
 
-void config_wifi(void) {
-
-    wifi_init_config_t wifi_config = WIFI_INIT_CONFIG_DEFAULT();
-    esp_wifi_init(&wifi_config);
-    esp_wifi_set_mode(WIFI_MODE_STA);
-    esp_wifi_start();
-
-    //global variable to scan_config
-    wifi_scan_config_t scan_config = {
-		.ssid = 0,
-		.bssid = 0,
-		.channel = 1,
-        .show_hidden = true
-    };
-
-   scan_wifi(scan_config);
-
-}
 
 void setup_wifi(void) {
     wifi_init_config_t wifi_config = WIFI_INIT_CONFIG_DEFAULT();
