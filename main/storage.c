@@ -10,9 +10,10 @@
 #include <esp_wifi.h>
 
 
-char prefix[15] = "/spiffs/";
+char *prefix = "/spiffs/";
 static const char *basePath = "/spiffs";
 static const char *TAG = "mestrado:";
+
 
 void spiff_init() {
     esp_vfs_spiffs_conf_t conf = {
@@ -78,14 +79,16 @@ void closeFile()  {
 FILE* openFile(char* file, char* mode) {
 
     ESP_LOGI(TAG, OPEN_FILE_MSG);
-    const char *path = strcat(prefix,file);
-    //ESP_LOGI(TAG,&path);
+    ESP_LOGI(TAG,"%s",prefix);
+    ESP_LOGI(TAG,"%s", file);
+    const char* path = strcat("/spiffs/","teste.txt");
+    ESP_LOGI(TAG,"%s",path);
     FILE* f = fopen(path, mode);
     if (f == NULL) {
         ESP_LOGE(TAG, OPEN_FILE_MSG_ERROR);
         return false;
     }
-    free(path);
+    //free(path);
     return f;
 }
 

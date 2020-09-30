@@ -13,6 +13,7 @@
 #include <inttypes.h>
 #include "esp_event_loop.h"
 #include "include/list_wifi.h"
+#include "include/scan_wifi.h"
 
 
 #define MAX_APs 60
@@ -27,13 +28,13 @@ int channel = 0;
 
 #define DEFAULT_SCAN_LIST_SIZE 10
 static const char *TAG = "scan";
-void scan_wifi(wifi_scan_config_t scan_config);
+
 bool getMacAddress(uint8_t baseMac[6]);
 bool startsWith(const char *pre, const char *str);
-static void perform_scan(void);
-static void init_wifi(void);
+static void wifi_scan(void);
+
 char baseMacChr[18] = {0};
-static bool got_scan_done_event= false;
+
 
 typedef struct  {
     char ssid [50];
@@ -43,17 +44,6 @@ typedef struct  {
     struct dl_list node;
 } WIFI;
 
-static esp_err_t event_handler(void *ctx, system_event_t *event)
-{
-    switch(event->event_id) {
-    case SYSTEM_EVENT_SCAN_DONE:
-        got_scan_done_event = true;
-        break;
-    default:
-        break;
-    }
-    return ESP_OK;
-}
 
 
 WIFI *init(char* ssid,int channel,int rssi,char* mac) {
@@ -90,8 +80,10 @@ void insert(struct dl_list *list,char* ssid,int channel,int rssi, char* mac)
 
 	WIFI *wifi_init = init(ssid,channel,rssi,mac);
 
-    if (!checkExists(list,ssid,mac))
+    if (!checkExists(list,ssid,mac && strcmp(ssidScan,ssid) == 0)){
+        rssiScan = rssi;
 	    dl_list_add_tail(list, &wifi_init->node);
+    }
 }
 
 bool startsWith(const char *pre, const char *str)
@@ -119,27 +111,84 @@ bool getMacAddress(uint8_t baseMac[6])
 int getCH(const  char *ssid) 
 {
     strcpy(ssidScan,ssid);
-    wifi_init_config_t wifi_config = WIFI_INIT_CONFIG_DEFAULT();
-    esp_wifi_init(&wifi_config);
-    esp_wifi_set_mode(WIFI_MODE_STA);
-    esp_wifi_start();
-    ESP_LOGI("Scan Wifi", "Valor eh: %s",ssidScan);
-    //global variable to scan_config
-    wifi_scan_config_t scan_config = {
-		.ssid = 0,
-		.bssid = 0,
-		.channel = 1,
-        .show_hidden = true
-    };
+    
+    ESP_LOGI("Scan Wifi", "Valor eh:");
 
-    scan_wifi(scan_config);
-
-    free(ssidScan);
+    wifi_scan();
+ 
     return rssiScan;
 }
 
+static void wifi_scan(void)
+{
+       esp_wifi_disconnect();
+    esp_wifi_stop();
+    esp_wifi_deinit();
+    tcpip_adapter_init();
+    
+    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+    ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
+    ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_STA) );
+    ESP_ERROR_CHECK( esp_wifi_start() );
+    
+    for(int x = 0; x < 14; x++)
+    {
+        wifi_scan_config_t scan_config = {
+            .ssid = NULL,
+            .bssid = NULL,
+            .channel = x,
+            .show_hidden = true,
+            .scan_type = WIFI_SCAN_TYPE_ACTIVE,
+            .scan_time.active.min = 10,
+            .scan_time.active.max = 100        
+        };
+        ESP_LOGI(TAG, "Start Scan");
+        ESP_ERROR_CHECK(esp_wifi_scan_start(&scan_config, true));
+
+        uint16_t apCount = 0;
+        esp_wifi_scan_get_ap_num(&apCount);
+        ESP_LOGI(TAG, "Number of access points found: %d for channel %d", apCount, x);
+        if (apCount > 0) 
+        {
+            wifi_ap_record_t *list = (wifi_ap_record_t *)malloc(sizeof(wifi_ap_record_t) * apCount);
+            ESP_ERROR_CHECK(esp_wifi_scan_get_ap_records(&apCount, list));
+            int i;
+            ESP_LOGI(TAG, "======================================================================");
+            ESP_LOGI(TAG, "             SSID             |    RSSI    |           AUTH           ");
+            ESP_LOGI(TAG, "======================================================================");
+            for (i=0; i<apCount; i++) {
+                char *authmode;
+                switch(list[i].authmode) {
+                case WIFI_AUTH_OPEN:
+                    authmode = "WIFI_AUTH_OPEN";
+                    break;
+                case WIFI_AUTH_WEP:
+                    authmode = "WIFI_AUTH_WEP";
+                    break;           
+                case WIFI_AUTH_WPA_PSK:
+                    authmode = "WIFI_AUTH_WPA_PSK";
+                    break;           
+                case WIFI_AUTH_WPA2_PSK:
+                    authmode = "WIFI_AUTH_WPA2_PSK";
+                    break;           
+                case WIFI_AUTH_WPA_WPA2_PSK:
+                    authmode = "WIFI_AUTH_WPA_WPA2_PSK";
+                    break;
+                default:
+                    authmode = "Unknown";
+                    break;
+                }
+                ESP_LOGI(TAG, "%26.26s    |    % 4d    |    %22.22s",list[i].ssid, list[i].rssi, authmode);
+            }
+            free(list);   
+        }
+    }
+
+}
+
 /* Initialise a wifi_ap_record_t, get it populated and display scanned data */
-static void perform_scan(void)
+void perform_scan()
 {
     uint16_t number = DEFAULT_SCAN_LIST_SIZE;
     wifi_ap_record_t ap_info[DEFAULT_SCAN_LIST_SIZE];
@@ -148,45 +197,15 @@ static void perform_scan(void)
     ESP_ERROR_CHECK(esp_wifi_scan_get_ap_records(&number, ap_info));
     ESP_ERROR_CHECK(esp_wifi_scan_get_ap_num(&ap_count));
     ESP_LOGI(TAG, "Total APs scanned = %u", ap_count);
-    for (int i = 0; (i < DEFAULT_SCAN_LIST_SIZE) && (i < ap_count); i++) {
-        //ESP_LOGI(TAG, "SSID \t\t%s", ap_info[i].ssid);
-        //ESP_LOGI(TAG, "RSSI \t\t%d", ap_info[i].rssi);
-        //ESP_LOGI(TAG, "Channel \t\t%d\n", ap_info[i].primary);
+        for (int i = 0; (i < DEFAULT_SCAN_LIST_SIZE) && (i < ap_count); i++) {
+            ESP_LOGI(TAG, "SSID \t\t%s", ap_info[i].ssid);
+            ESP_LOGI(TAG, "RSSI \t\t%d", ap_info[i].rssi);
+            ESP_LOGI(TAG, "Channel \t\t%d\n", ap_info[i].primary);
 
-        if (getMacAddress(ap_info[i].bssid)) {
-            insert(&head,(char *) ap_info[i].ssid, ap_info[i].primary, ap_info[i].rssi,baseMacChr);
+            if (getMacAddress(ap_info[i].bssid)) {
+                insert(&head,(char *) ap_info[i].ssid, ap_info[i].primary, ap_info[i].rssi,baseMacChr);
+            }
         }
-    }
 
     display(&head);
-}
-
-
-/* Initialize Wi-Fi as sta and start scan */
-static void init_wifi(void)
-{
-    tcpip_adapter_init();
-    ESP_ERROR_CHECK(esp_event_loop_init(event_handler, NULL));
-
-    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
-
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
-    ESP_ERROR_CHECK(esp_wifi_start());
-
-    ESP_ERROR_CHECK(esp_wifi_scan_start(NULL, true));
-
-    while (1) {
-        if (got_scan_done_event == true) {
-            perform_scan();
-            got_scan_done_event = false;
-            break;
-        } else {
-            vTaskDelay(100 / portTICK_RATE_MS);
-        }
-    }
-}
-
-void setup_wifi(void) {
-    init_wifi();
 }

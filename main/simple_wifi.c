@@ -70,9 +70,11 @@ const int WIFI_CONNECTED_BIT = BIT0;
 void init_task(void) 
 {
 
+    xTaskCreate(initLeach, "leach", 4096, NULL, 5, NULL);
+    //xTaskCreate(udp_client_task, "udp_client", 4096, NULL, 5, NULL);
     //xTaskCreate(count_down_init,"count_down",1024,NULL,2,NULL);
-    
-    xTaskCreate(udp_server_task, "udp_server", 4096, NULL, 1, NULL);
+    //xTaskCreate(udp_server_task, "udp_server", 4096, NULL, 1, NULL);
+    //xTaskCreate(udp_server_task, "udp_server", 4096, NULL, 1, NULL);
    // xTaskCreate(initLeach, "random", 2048, NULL, 5, NULL);  
 
     //xTaskCreate(tcp_server_task,"tcp_server",4096,NULL,1,&Handle);
@@ -119,6 +121,9 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
         esp_wifi_connect();
         xEventGroupClearBits(wifi_event_group, WIFI_CONNECTED_BIT);
         break;
+    case SYSTEM_EVENT_SCAN_DONE:
+        got_scan_done_event = true;
+        break;   
     default:
         break;
     }
@@ -152,8 +157,40 @@ static void check_socket(void *pvParameters) {
     vTaskDelete(NULL);
 }
 
+void wifi_init_scan() {
+    esp_wifi_disconnect();
+    esp_wifi_stop();
+    esp_wifi_deinit();
+    vTaskDelay(2000 / portTICK_PERIOD_MS);
+    wifi_event_group = xEventGroupCreate();
+    /* Initialize Wi-Fi as sta and start scan */
+    tcpip_adapter_init();
+    ESP_ERROR_CHECK(esp_event_loop_init(event_handler, NULL));
+
+    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+    ESP_ERROR_CHECK(esp_wifi_start());
+
+    ESP_ERROR_CHECK(esp_wifi_scan_start(NULL, true));
+    ESP_LOGI(TAG,"WIFI SCAN START");
+    while (1) {
+        if (got_scan_done_event == true) {
+            perform_scan();
+            ESP_LOGI(TAG,"WIFI SCAN DONE");
+            got_scan_done_event = false;
+            
+            break;
+        }else {
+            vTaskDelay(100 / portTICK_RATE_MS);
+        }
+    }
+}
+
 void wifi_init_softap()
 {
+    
     wifi_event_group = xEventGroupCreate();
 
     tcpip_adapter_init();
@@ -195,10 +232,11 @@ uint8_t* getMacAddressWifi() {
 
 void wifi_cont_sta()
 {
+    
     wifi_event_group = xEventGroupCreate();
 
     tcpip_adapter_init();
-    
+
     switchConn = false;
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
@@ -217,6 +255,8 @@ void wifi_cont_sta()
     ESP_LOGI(TAG, "wifi_init_sta finished.");
     ESP_LOGI(TAG, "connect to ap SSID:%s password:%s",
              CONFIG_ESP_WIFI_SSID_STA, EXAMPLE_ESP_WIFI_PASS);
+
+        
 }
 
 void wifi_init_sta()
@@ -282,20 +322,23 @@ void app_main()
       ret = nvs_flash_init();
     }
     ESP_ERROR_CHECK(ret);
-  
+    //init_task();
+    wifi_init_sta();
+    init_task();
     /*
     spiff_init();
     writeFile("teste.txt","Ola");
     vTaskDelay(1000);
     readFile("teste.txt");
+    
     staconn = true;
     ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
 
     setup_wifi();
-    
-*/
-wifi_init_sta();
-    init_task();
+   */ 
+
+   // wifi_init_sta();
+  //  init_task();
   //  setup_wifi();
     //initLeach();
     //wifi_init_sta();

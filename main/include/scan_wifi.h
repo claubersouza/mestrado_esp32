@@ -4,9 +4,9 @@
 extern "C" {
 #endif
 
+bool got_scan_done_event;
 
-
-void setup_wifi(void);
+void perform_scan();
 int getCH(const  char *ssid);
 
     #ifdef __cplusplus
