@@ -6,6 +6,7 @@ set(COMPONENT_SRCS,"storage.c")
 set(COMPONENT_SRCS,"leach.c")
 set(COMPONENT_SRCS,"random.c")
 set(INCLUDE_DIRS "include")
+set(INCLUDE_DIRS "../components")
 
 
 register_component()

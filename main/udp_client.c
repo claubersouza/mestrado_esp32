@@ -29,9 +29,9 @@
 
 
 
-#define CONFIG_ESP_WIFI_SSID_STA "Clai2.4"
+#define CONFIG_ESP_WIFI_SSID_STA "2g_Souza"
 #define EXAMPLE_ESP_WIFI_PASS "322799273"
-#define HOST_IP_ADDR "192.168.0.8"
+#define HOST_IP_ADDR "192.168.0.218"
 
 #define PORT CONFIG_EXAMPLE_PORT
 
@@ -160,7 +160,15 @@ void udp_client_task(void *pvParameters)
 
         while (1) {
             snprintf(convertString,sizeof(convertString),"%d",rssiSend);
-            int err = sendto(sock, convertString, strlen(convertString), 0, (struct sockaddr *)&destAddr, sizeof(destAddr));
+            int err = 0 ;
+            while (1)
+            {
+                err = sendto(sock, convertString, strlen(convertString), 0, (struct sockaddr *)&destAddr, sizeof(destAddr));
+                vTaskDelay(1000);
+                ESP_LOGI(TAG, "Enviado");
+
+            }
+            
             
             //int err = sendto(sock, convertString, strlen(convertString), 0, (struct sockaddr *)&destAddr, sizeof(destAddr));
             if (err < 0) {

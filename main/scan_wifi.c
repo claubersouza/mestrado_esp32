@@ -112,7 +112,7 @@ int getCH(const  char *ssid)
 {
     strcpy(ssidScan,ssid);
     
-    ESP_LOGI("Scan Wifi", "Valor eh:");
+    ESP_LOGI("Scan Wifi", "Valor eh:%s",ssidScan);
 
     wifi_scan();
  
@@ -179,6 +179,11 @@ static void wifi_scan(void)
                     authmode = "Unknown";
                     break;
                 }
+
+                if(strcmp(ssidScan,&list[i].ssid) == 0)
+                    rssiScan =  list[i].rssi;
+                
+
                 ESP_LOGI(TAG, "%26.26s    |    % 4d    |    %22.22s",list[i].ssid, list[i].rssi, authmode);
             }
             free(list);   

@@ -97,17 +97,17 @@ void electionCH() {
     //Check if Energy is > 0 and available for Cluster Head election
     if(node.E > 0 && node.rleft == 0) {
         //if (generateRandom() > calculeThreshold() ) {      
-            node.dts = getCH("Clai2.4"); 
+            node.dts = getCH("2g_Souza"); 
             node.role = 1;
             node.rn = rnd;
             node.tel = node.tel + 1;
             node.rleft = 1/p-reelection();
             node.cluster = CLheads +1;
            
-            ESP_LOGI("Valor", "Valor RSSI Clai:%d",node.dts);
+            ESP_LOGI("Valor", "Valor RSSI 2G_Souza:%d",node.dts);
                    
             vTaskDelay(1000 / portTICK_PERIOD_MS);
-            sendMsg(node.dts);
+            //sendMsg(node.dts);
         //}
     }
 
