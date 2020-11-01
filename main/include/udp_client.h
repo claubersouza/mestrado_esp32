@@ -3,7 +3,7 @@ extern "C" {
 #endif
 
 
-void udp_client_task(void *pvParameters);
+void udp_client_task(void);
 void initUdp(int rssi);
 
 

@@ -56,7 +56,8 @@ void initUdp(int rssi)
     initialise_wifi();
     vTaskDelay(1000 / portTICK_PERIOD_MS);
    // wait_for_ip();
-    xTaskCreate(udp_client_task, "udp_client", 4096, NULL, 5, NULL);
+   udp_client_task();
+    //xTaskCreate(udp_client_task, "udp_client", 4096, NULL, 5, NULL);
 }
 
 static esp_err_t event_handler(void *ctx, system_event_t *event)
@@ -100,8 +101,7 @@ static void initialise_wifi(void)
     wifi_event_group = xEventGroupCreate();
 
     tcpip_adapter_init();
-
-   
+        ESP_ERROR_CHECK(esp_event_loop_init(event_handler, NULL) );
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
@@ -135,7 +135,7 @@ static void wait_for_ip()
     
 }
 
-void udp_client_task(void *pvParameters)
+void udp_client_task(void)
 {
     char rx_buffer[128];
     char addr_str[128];

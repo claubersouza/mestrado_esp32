@@ -115,6 +115,9 @@ int getCH(const  char *ssid)
     ESP_LOGI("Scan Wifi", "Valor eh:%s",ssidScan);
 
     wifi_scan();
+
+    esp_wifi_disconnect();
+    esp_wifi_stop();
  
     return rssiScan;
 }
